@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/images.dart' as i;
+import 'package:geolocator/geolocator.dart';
 
 class Setup extends StatefulWidget {
   static const route = 'setup';
@@ -25,7 +26,31 @@ class _SetupState extends State<Setup> {
   }
 
   _permissions() async {
-    // You may need to check permissions for the wifi_scan package
+    Geolocator geolocator = Geolocator();
+
+    try {
+      bool _serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!_serviceEnabled) {
+        // Location services are not enabled, show a popup to prompt the user to enable them.
+        _showLocationServicePopup();
+        return;
+      }
+
+      LocationPermission _permissionGranted =
+          await Geolocator.requestPermission();
+      if (_permissionGranted != LocationPermission.always &&
+          _permissionGranted != LocationPermission.whileInUse) {
+        // Permissions are denied, show a popup to prompt the user to grant location permission.
+        _showLocationPermissionPopup();
+        return;
+      }
+
+      // Continue with your Wi-Fi scanning logic here.
+      _scan();
+    } catch (e) {
+      print('Error during location permission check: $e');
+      // Handle the error as needed.
+    }
   }
 
   _scan() async {
@@ -50,6 +75,7 @@ class _SetupState extends State<Setup> {
       } else if (canStartScanResult == CanStartScan.noLocationServiceDisabled) {
         print(
             "Location services are disabled. Prompt the user to enable them.");
+        _showLocationServicePopup();
       } else {
         print("Cannot start scan: $canStartScanResult");
       }
@@ -102,10 +128,52 @@ class _SetupState extends State<Setup> {
     );
   }
 
+  void _showLocationServicePopup() {
+    showDialog(
+      context: _context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Turn On Location'),
+          content: const Text(
+              'Please turn on location services to use this feature.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLocationPermissionPopup() {
+    showDialog(
+      context: _context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Location Permission'),
+          content: const Text(
+              'Please grant location permission to use this feature.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    double _h = MediaQuery.of(context).size.height;
-    double _w = MediaQuery.of(context).size.width;
+    double h = MediaQuery.of(context).size.height;
+    double w = MediaQuery.of(context).size.width;
     _context = context;
     return Scaffold(
       appBar: AppBar(
@@ -131,7 +199,8 @@ class _SetupState extends State<Setup> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                await _permissions(); // Ensure permissions are checked before initiating scan
                 setState(() {
                   _loading = true;
                   Timer(const Duration(seconds: 4), () {
@@ -221,7 +290,7 @@ class _SetupState extends State<Setup> {
 
   @override
   void dispose() {
-    _scanSubscription?.cancel();
+    _scanSubscription.cancel();
     super.dispose();
   }
 }

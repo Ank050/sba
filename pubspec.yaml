@@ -58,9 +58,11 @@ dev_dependencies:
   google_fonts: ^5.1.0
   flutter_lints: ^2.0.0
   flutter_animation_progress_bar: ^2.3.1
-  
   wifi_scan: ^0.4.0+2
   network_info_plus: ^4.0.2
+  app_settings: ^5.1.1
+  location: ^5.0.0
+  geolocator: ^10.1.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
