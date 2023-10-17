@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/images.dart' as i;
-import 'package:geolocator/geolocator.dart';
+import 'package:app_settings/app_settings.dart';
+import 'package:convert/convert.dart';
 
 class Setup extends StatefulWidget {
   static const route = 'setup';
+
+  const Setup({Key? key}) : super(key: key);
 
   @override
   _SetupState createState() => _SetupState();
@@ -18,6 +22,7 @@ class _SetupState extends State<Setup> {
   bool _loading = false;
   late List<WiFiAccessPoint> _networks = [];
   late StreamSubscription<List<WiFiAccessPoint>> _scanSubscription;
+  late Socket _sock;
 
   @override
   initState() {
@@ -26,75 +31,109 @@ class _SetupState extends State<Setup> {
   }
 
   _permissions() async {
-    Geolocator geolocator = Geolocator();
-
-    try {
-      bool _serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!_serviceEnabled) {
-        // Location services are not enabled, show a popup to prompt the user to enable them.
-        _showLocationServicePopup();
-        return;
-      }
-
-      LocationPermission _permissionGranted =
-          await Geolocator.requestPermission();
-      if (_permissionGranted != LocationPermission.always &&
-          _permissionGranted != LocationPermission.whileInUse) {
-        // Permissions are denied, show a popup to prompt the user to grant location permission.
-        _showLocationPermissionPopup();
-        return;
-      }
-
-      // Continue with your Wi-Fi scanning logic here.
-      _scan();
-    } catch (e) {
-      print('Error during location permission check: $e');
-      // Handle the error as needed.
-    }
+    // You may need to check permissions for the wifi_scan package
   }
 
   _scan() async {
     try {
       CanStartScan canStartScanResult = await WiFiScan.instance.canStartScan();
 
-      if (canStartScanResult == CanStartScan.yes) {
-        _scanSubscription = WiFiScan.instance.onScannedResultsAvailable.listen(
-          (List<WiFiAccessPoint> results) {
-            setState(() {
-              _networks = results;
-              _loading = false;
-            });
-          },
-        );
+      switch (canStartScanResult) {
+        case CanStartScan.yes:
+          setState(() {
+            _loading = true;
+          });
 
-        setState(() {
-          _loading = true;
-        });
-
-        await WiFiScan.instance.startScan();
-      } else if (canStartScanResult == CanStartScan.noLocationServiceDisabled) {
-        print(
-            "Location services are disabled. Prompt the user to enable them.");
-        _showLocationServicePopup();
-      } else {
-        print("Cannot start scan: $canStartScanResult");
+          _startWiFiScan();
+          break;
+        case CanStartScan.noLocationServiceDisabled:
+          _showLocationServiceDisabledSnackBar();
+          break;
+        default:
+          _showErrorSnackBar('Cannot start scan: $canStartScanResult');
       }
     } catch (e, stacktrace) {
       print("Error during Wi-Fi scan: $e\n$stacktrace");
-      setState(() {
-        _loading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'An error occurred during Wi-Fi scan. Please try again later.'),
-        ),
-      );
+      _handleScanError();
     }
   }
 
-  _connect(WiFiAccessPoint network) {
-    // Implement your connection logic using the selected network
+  _startWiFiScan() async {
+    _scanSubscription = WiFiScan.instance.onScannedResultsAvailable.listen(
+      (List<WiFiAccessPoint> results) {
+        setState(() {
+          _networks = results;
+          _loading = false;
+        });
+      },
+    );
+
+    await WiFiScan.instance.startScan();
+  }
+
+  _showLocationServiceDisabledSnackBar() {
+    final snackBar = SnackBar(
+      content: const Text(
+        'Please enable location services to scan for Wi-Fi networks.',
+        style: TextStyle(color: Colors.white, fontSize: 16),
+      ),
+      backgroundColor: Colors.blue,
+      behavior: SnackBarBehavior.floating,
+      elevation: 4.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      action: SnackBarAction(
+        label: 'Open Settings',
+        textColor: Colors.white,
+        onPressed: () {
+          AppSettings.openAppSettings(type: AppSettingsType.location);
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  _showErrorSnackBar(String errorMessage) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorMessage),
+      ),
+    );
+  }
+
+  _handleScanError() {
+    setState(() {
+      _loading = false;
+    });
+
+    _showErrorSnackBar(
+        'An error occurred during Wi-Fi scan. Please try again later.');
+  }
+
+  _connect(WiFiAccessPoint network) async {
+    _sock = await Socket.connect('192.168.1.50', 5555);
+    _sendSTA(network);
+  }
+
+  _sendSTA(WiFiAccessPoint network) async {
+    _connect(network);
+    List<int> data = hex.decode(
+        '2b${network.ssid.length + _password.length + 7}5700535401${hex.encode(network.ssid.codeUnits)}3a${hex.encode(_password.codeUnits)}');
+    _sock.add(data);
+    _sock.listen(
+      (dg) {
+        if (dg[2] == 0x57 && dg[4] == 0x53 && dg[5] == 0x54) {
+          _sock.close();
+          ScaffoldMessenger.of(_context).showSnackBar(
+            const SnackBar(content: Text('Command sent')),
+          );
+          Navigator.of(_context).pop();
+        }
+      },
+    );
   }
 
   _passwordInput(WiFiAccessPoint network) {
@@ -122,48 +161,6 @@ class _SetupState extends State<Setup> {
               onPressed: () => Navigator.of(cont).pop(),
               child: const Text("Cancel"),
             )
-          ],
-        );
-      },
-    );
-  }
-
-  void _showLocationServicePopup() {
-    showDialog(
-      context: _context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Turn On Location'),
-          content: const Text(
-              'Please turn on location services to use this feature.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showLocationPermissionPopup() {
-    showDialog(
-      context: _context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Location Permission'),
-          content: const Text(
-              'Please grant location permission to use this feature.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
           ],
         );
       },
@@ -199,8 +196,7 @@ class _SetupState extends State<Setup> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ElevatedButton(
-              onPressed: () async {
-                await _permissions(); // Ensure permissions are checked before initiating scan
+              onPressed: () {
                 setState(() {
                   _loading = true;
                   Timer(const Duration(seconds: 4), () {
@@ -216,21 +212,19 @@ class _SetupState extends State<Setup> {
                 });
                 _scan();
               },
-              child: Text(
-                'SCAN',
-                style: GoogleFonts.montserrat(
-                  textStyle: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue, // Button color
+                primary: Colors.blue,
                 padding: const EdgeInsets.all(16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'SCAN',
+                style: GoogleFonts.montserrat(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -250,8 +244,7 @@ class _SetupState extends State<Setup> {
                                 padding: const EdgeInsets.all(8),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color:
-                                        const Color.fromARGB(255, 61, 159, 64),
+                                    color: Colors.green,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: ListTile(
@@ -259,19 +252,16 @@ class _SetupState extends State<Setup> {
                                     title: Text(
                                       network.ssid,
                                       style: GoogleFonts.montserrat(
-                                        textStyle: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w500),
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                     trailing: Text(
                                       'Level: ${network.level}',
                                       style: GoogleFonts.montserrat(
-                                        textStyle: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white,
-                                        ),
+                                        fontSize: 12,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
