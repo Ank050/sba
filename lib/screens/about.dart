@@ -11,7 +11,7 @@ class About extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: Colors.white,
@@ -20,7 +20,7 @@ class About extends StatelessWidget {
         title: Text(
           'About Smart Build',
           style: GoogleFonts.montserrat(
-            textStyle: TextStyle(
+            textStyle: const TextStyle(
               color: Colors.black,
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -43,7 +43,7 @@ class About extends StatelessWidget {
             Text(
               "SmartBuild Automation is on a mission to revolutionize smart home automation, aiming to be the go-to solution for all automation needs. Leveraging a powerful network, innovative products, and a seamless setup process, we are just one glitch away from transforming any home into a smart haven. Our commitment to accessibility, reliability, and affordability drives our vision of becoming a global leader in automation solutions for residential, commercial, and industrial buildings.\n\nFrom our humble beginnings as Melange Systems to the rebranded SmartBuild Automation, we have evolved to offer aesthetically designed touch switchboards, smart sensors, and more. Led by a dedicated team with over a century of combined leadership experience, SmartBuild Automation is poised for continuous growth and excellence in the years to come.",
               style: GoogleFonts.montserrat(
-                textStyle: TextStyle(
+                textStyle: const TextStyle(
                   fontSize: 16,
                   color: Colors.black,
                   height: 1.4,

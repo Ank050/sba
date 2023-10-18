@@ -3,11 +3,20 @@ import "cluster.dart";
 
 bool open = true;
 bool gate = true;
-late String devID;
+late String devid;
 List<Cluster> list = [];
-// Cluster A =
-//     Cluster('Test', '192.168.1.26', 'deep', hex.decode('3CC1F60600000001'), []);
-
+int n = -1;
+const demoboard = {
+  0x02: ['HTB1', 'images/bulb 1.png'],
+  0x2c: ['HTB2', 'images/2 relay.png'],
+  0x05: ['HTB4', 'images/4 relay.png'],
+  0x2e: ['HTB4D2', 'images/4+2 relay.png'],
+  0x2f: ['HTB5D1', 'images/5+1 relay.png'],
+  0x27: ['HTB6', 'images/6 relay.png'],
+  0x34: ['HTB8D2', 'images/8+2 relay.png'],
+  0x35: ['HTB9D1', 'images/9+1 relay.png'],
+  0x36: ['HTB10', 'images/10 relay.png']
+};
 const fan = [
   'images/fan 0.png',
   'images/fan 1.png',

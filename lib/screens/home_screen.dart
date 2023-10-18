@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'about.dart';
-import 'control_item.dart';
+import 'relay_screen.dart';
 import 'setup.dart';
 import '../data/images.dart' as i;
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -71,10 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Color.fromARGB(255, 107, 105, 105).withOpacity(0.4),
+                    color: const Color.fromARGB(255, 107, 105, 105)
+                        .withOpacity(0.4),
                     spreadRadius: 3,
                     blurRadius: 8,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),

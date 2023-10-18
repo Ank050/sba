@@ -3,7 +3,7 @@ import "package:flutter/services.dart";
 
 import './screens/home_screen.dart';
 import './screens/about.dart';
-import './screens/control_item.dart';
+import 'screens/relay_screen.dart';
 import './screens/setup.dart';
 
 void main() {
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: "HOME",
-      home: HomeScreen(),
+      home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         appBarTheme: const AppBarTheme(
@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         About.route: (ctx) => const About(),
-        Setup.route: (ctx) => Setup(),
+        Setup.route: (ctx) => const Setup(),
         // ControlItem.route: (ctx) => ControlItem()
       },
     );
